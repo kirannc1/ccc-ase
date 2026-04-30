@@ -1,0 +1,123 @@
+@startuml
+title CCC/ASE Data Architecture - Logical View (Stores + Flows)
+
+left to right direction
+skinparam linetype ortho
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam nodesep 40
+skinparam ranksep 55
+
+skinparam DefaultFontName Arial
+skinparam ArrowColor #2C3E50
+
+skinparam package {
+  BackgroundColor #FFFFFF
+  BorderColor #34495E
+  FontColor #2C3E50
+}
+skinparam component {
+  BackgroundColor #F7F9FC
+  BorderColor #2C3E50
+  FontColor #2C3E50
+}
+skinparam database {
+  BackgroundColor #FFF9E6
+  BorderColor #8E6B00
+  FontColor #2C3E50
+}
+
+legend left
+  == Focus ==
+  Data-plane stores and the minimum flows enabling:
+  ingestion -> canonical -> graph/features -> scenario/opt -> SDA -> ledger/replay -> learning
+endlegend
+
+package "Sources" as SRC {
+  component "Finance" as S_FIN
+  component "HR" as S_HR
+  component "Operations" as S_OPS
+  component "IT/Platform" as S_IT
+  component "External Signals" as S_EXT
+}
+
+package "Integration" as ING {
+  component "Connectors\n+ Parsing" as C_CONN
+  component "Normalization\n+ MDM" as C_NORM
+}
+
+package "Data Plane (Stores)" as STO {
+  database "Raw Landing\n(ADLS Raw)" as D_RAW
+  database "Curated Lakehouse\n(Canonical facts)" as D_CUR
+  database "Feature Store\n(Derived signals)" as D_FEAT
+  database "Enterprise KG\n(Graph)" as D_KG
+  database "Scenario Store\n(Definitions + Runs)" as D_SCN
+  database "Decision Store\n(Recommendation headers)" as D_DEC
+  database "Decision Ledger\n(Immutable lineage)" as D_LED
+  database "Search Index\n(Evidence discovery)" as D_SRCH
+  database "Cache\n(Hot reads)" as D_CACHE
+}
+
+package "Decisioning Services" as DEC {
+  component "Signal Intelligence\n+ Event Detection" as C_SIG
+  component "Scenario Simulation" as C_SIM
+  component "Optimization" as C_OPT
+  component "Decisioning\n(SDA builder)" as C_SDA
+  component "Explanation\n(Executive card)" as C_XAI
+  component "Governance/Audit\n(Policy checks)" as C_GOV
+  component "Learning\n(Promotion gates)" as C_LEARN
+}
+
+' Sources -> raw
+S_FIN --> C_CONN
+S_HR --> C_CONN
+S_OPS --> C_CONN
+S_IT --> C_CONN
+S_EXT --> C_CONN
+
+C_CONN --> D_RAW : land raw\n+ provenance
+
+' Normalize to curated
+D_RAW --> C_NORM
+C_NORM --> D_CUR : canonical entities\n+ events
+
+' Build graph + features
+D_CUR --> C_SIG
+C_SIG --> D_FEAT : features
+C_NORM --> D_KG : nodes/edges\n(identity, relationships)
+D_FEAT --> C_SIG : feature reads
+D_KG --> C_SIG : context reads
+
+' Scenarios + optimization
+C_SIG --> C_SIM : trigger
+D_FEAT --> C_SIM
+D_KG --> C_SIM
+C_SIM --> D_SCN : runs + outputs
+D_SCN --> C_OPT
+D_FEAT --> C_OPT
+C_OPT --> D_SCN : frontier artifact
+
+' Decisioning artifacts
+D_SCN --> C_SDA
+D_KG --> C_SDA
+D_FEAT --> C_SDA
+C_SDA --> D_DEC : recommendation header
+C_SDA --> D_LED : SDA snapshot\n(append-only)
+C_GOV --> D_LED : policy stamps\n(append-only)
+
+' Explainability + discovery
+D_LED --> C_XAI
+C_XAI --> D_SRCH : index evidence
+C_XAI --> D_CACHE : hot cards
+
+' Replay
+D_LED --> D_CACHE : hot replay packs
+
+' Learning loop
+C_LEARN --> D_LED : promotions\n(append-only)
+C_LEARN --> D_KG : update confidences
+C_LEARN --> D_SCN : calibrate
+
+@enduml
+

@@ -1,0 +1,213 @@
+@startuml
+title Cognitive Command Center (CCC) - Technical Architecture (Containers + Data Plane)
+
+left to right direction
+skinparam linetype ortho
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam nodesep 40
+skinparam ranksep 55
+
+skinparam DefaultFontName Arial
+skinparam ArrowColor #2C3E50
+
+skinparam package {
+  BackgroundColor #FFFFFF
+  BorderColor #34495E
+  FontColor #2C3E50
+}
+skinparam component {
+  BackgroundColor #F7F9FC
+  BorderColor #2C3E50
+  FontColor #2C3E50
+}
+skinparam database {
+  BackgroundColor #FFF9E6
+  BorderColor #8E6B00
+  FontColor #2C3E50
+}
+
+legend left
+  == View ==
+  Container-level technical architecture derived from:
+  - `solution.md` (ASE multi-agent + learning)
+  - `detailed_requirements.md` (auditability, replay, governed learning)
+  - `architecture.md` (service boundaries, data stores, event flows)
+endlegend
+
+package "Actors" as ACT {
+  component "GCC Leadership" as ACT_LEAD
+  component "Strategy Ops" as ACT_OPS
+  component "Governance/Admin" as ACT_GOV
+}
+
+package "Experience Layer" as EXP {
+  component "Leadership Web App" as WEB_LEAD
+  component "Strategy Ops Console" as WEB_OPS
+  component "Admin & Governance Console" as WEB_GOV
+}
+
+package "Edge & Access" as EDGE {
+  component "API Gateway\n(Azure API Management)" as APIM
+  component "Identity & Access Proxy\n(Microsoft Entra ID)" as IAM
+  component "Webhook Receiver" as WEBHOOK
+}
+
+package "Eventing" as EVT {
+  component "Event Stream\n(Event Hubs)" as EH
+  component "Workflow Bus\n(Service Bus)" as SB
+}
+
+package "Integration & Ingestion" as ING {
+  component "Source Connector Service" as CONN
+  component "Batch Ingestion Service" as BATCH
+  component "Streaming Ingestion Service" as STREAM
+  component "Document Parsing Service" as DOCPARSE
+  component "External Signal Harvester" as EXTHARV
+}
+
+package "ASE Control Plane" as CP {
+  component "ASE Orchestrator Service\n(workflows, idempotency,\ncorrelation)" as ASE_ORCH
+  component "Tool Registry + Guardrails Service\n(tool allowlist, constraints,\nredaction, approvals)" as ASE_GUARD
+  component "Decision Ledger API Service\n(append-only + replay queries)" as LEDGER_API
+}
+
+package "ASE Agent Services" as AG {
+  component "Signal Ingestion Agent Service" as AG_ING
+  component "Entity Resolution Agent Service" as AG_MDM
+  component "Graph Construction Agent Service" as AG_GRAPH
+  component "Causal Reasoning Agent Service" as AG_CAUSAL
+  component "Scenario Simulation Agent Service" as AG_SIM
+  component "Strategy Optimization Agent Service" as AG_OPT
+  component "Decision Explanation Agent Service" as AG_EXP
+  component "Governance & Audit Agent Service" as AG_AUD
+  component "Learning Agent Service" as AG_LEARN
+}
+
+package "Core Intelligence Services" as CORE {
+  component "Semantic Normalization Service" as S_NORM
+  component "Knowledge Graph Service" as S_KG
+  component "Signal Intelligence Service" as S_SIG
+  component "Scenario Simulation Service" as S_SIM
+  component "Optimization Service" as S_OPT
+  component "Decisioning Service" as S_DEC
+  component "Explanation Service" as S_XAI
+  component "Policy & Constraint Service" as S_POL
+}
+
+package "AI / Model Services" as ML {
+  component "Feature Engineering Service" as M_FEAT
+  component "Forecasting Model Service" as M_FCST
+  component "Anomaly Detection Service" as M_ANOM
+  component "Causal Inference Service" as M_CAUS
+  component "LLM Orchestration Service" as M_LLM
+  component "Prompt & Template Service" as M_PROMPT
+}
+
+package "Workflow & Execution" as WF {
+  component "Approval Workflow Service" as W_APPR
+  component "Human Override Service" as W_OVR
+  component "Execution Orchestrator" as W_EXEC
+  component "Action Adapter Service" as W_ADAPT
+  component "Notification Service" as W_NOTIF
+}
+
+package "Observability & Governance" as OBS {
+  component "Audit Trail Service" as O_AUDIT
+  component "Recommendation Replay Service" as O_REPLAY
+  component "Model Registry Service" as O_MREG
+  component "Telemetry & Monitoring Service" as O_TEL
+  component "Configuration Service" as O_CFG
+}
+
+package "Data Plane (Stores)" as DATA {
+  database "Operational Metadata Store\n(relational)" as D_META
+  database "Raw Data Lake\n(ADLS Gen2)" as D_RAW
+  database "Curated Analytical Store\n(lakehouse/warehouse)" as D_CUR
+  database "Feature Store" as D_FEAT
+  database "Graph Database\n(property graph)" as D_GRAPH
+  database "Scenario Store\n(metadata + artifacts)" as D_SCEN
+  database "Decision & Audit Store" as D_DAUD
+  database "Decision Ledger (Immutable)\n(append-only + object store)" as D_LEDGER
+  database "Search Index\n(Azure AI Search)" as D_SEARCH
+  database "Cache\n(Redis)" as D_CACHE
+}
+
+' --- Primary user flows ---
+ACT_LEAD --> WEB_LEAD
+ACT_OPS --> WEB_OPS
+ACT_GOV --> WEB_GOV
+
+WEB_LEAD --> APIM
+WEB_OPS --> APIM
+WEB_GOV --> APIM
+APIM --> IAM : authN/authZ
+
+' --- Ingestion flows ---
+WEBHOOK --> EH
+CONN --> EH : events
+BATCH --> EH : batches
+STREAM --> EH : streams
+EXTHARV --> EH : external feeds
+DOCPARSE --> EH : extracted entities
+
+' --- Orchestration (agentic execution) ---
+APIM --> ASE_ORCH : requests
+ASE_ORCH --> ASE_GUARD : enforce
+ASE_ORCH --> SB : workflow cmds
+EH --> ASE_ORCH : triggers
+
+ASE_ORCH --> AG : route tasks
+AG --> CORE : call domain services
+CORE --> ML : model calls
+
+' --- Data plane interactions (kept high-level to reduce arrow density) ---
+ING --> D_RAW : land raw
+S_NORM --> D_CUR : curated events
+M_FEAT --> D_FEAT : features
+S_SIG --> D_FEAT : derived signals
+S_KG --> D_GRAPH : graph state
+S_SIM --> D_SCEN : scenario runs
+S_DEC --> D_DAUD : recommendations
+O_AUDIT --> D_DAUD : audit logs
+LEDGER_API --> D_LEDGER : append/replay
+O_REPLAY --> D_LEDGER : replay reads
+S_XAI --> D_SEARCH : index evidence
+APIM --> D_CACHE : hot reads
+
+' --- Governance / approval / execution loop ---
+S_DEC --> W_APPR : propose
+W_APPR --> W_OVR : override path
+W_APPR --> W_EXEC : approved
+W_EXEC --> W_ADAPT : execute
+W_EXEC --> W_NOTIF : notify
+W_EXEC --> O_TEL : telemetry
+W_OVR --> ASE_ORCH : recompute
+
+' --- Learning loop ---
+O_TEL --> AG_LEARN : outcomes
+O_TEL --> O_MREG : eval metrics
+AG_LEARN --> LEDGER_API : versioned updates
+AG_LEARN --> S_SIM : recalibrate
+AG_LEARN --> S_KG : update confidences
+
+' --- Audit / replay surfaces ---
+APIM --> O_REPLAY : replay
+APIM --> O_AUDIT : audit queries
+APIM --> O_CFG : config
+APIM --> O_MREG : model registry
+
+' --- Hidden links to stabilize layout ---
+EXP -[hidden]-> EDGE
+EDGE -[hidden]-> EVT
+EVT -[hidden]-> ING
+ING -[hidden]-> CP
+CP -[hidden]-> AG
+AG -[hidden]-> CORE
+CORE -[hidden]-> WF
+WF -[hidden]-> OBS
+OBS -[hidden]-> DATA
+
+@enduml
+

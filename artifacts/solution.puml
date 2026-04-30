@@ -1,0 +1,260 @@
+@startuml
+title Cognitive Command Center (CCC) - Detailed Solution Architecture (Multi-Agent ASE + Learning)
+
+' Layout & readability
+left to right direction
+skinparam linetype ortho
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam nodesep 40
+skinparam ranksep 55
+
+skinparam DefaultFontName Arial
+skinparam ArrowColor #2C3E50
+
+skinparam package {
+  BackgroundColor #FFFFFF
+  BorderColor #34495E
+  FontColor #2C3E50
+}
+skinparam component {
+  BackgroundColor #F7F9FC
+  BorderColor #2C3E50
+  FontColor #2C3E50
+}
+skinparam database {
+  BackgroundColor #FFF9E6
+  BorderColor #8E6B00
+  FontColor #2C3E50
+}
+
+legend left
+  == Intent ==
+  Real-time, explainable strategic recommendations for GCC leadership using:
+  - enterprise knowledge graph (causal, confidence-aware)
+  - real-time what-if scenario simulation
+  - multi-objective strategy optimization
+  - explainable decision layer with full lineage
+  - human override with recomputation
+  - governed continuous learning from outcomes
+endlegend
+
+package "Signal Sources" as P_SRC {
+  rectangle "Finance Systems\n(ERP, FP&A, Procurement)" as SRC_FIN
+  rectangle "HR Systems\n(HCM, ATS, LXP)" as SRC_HR
+  rectangle "Operations Systems\n(SLAs, BPM, Process Mining)" as SRC_OPS
+  rectangle "IT/Platform Systems\n(ITSM, Cloud, SecOps)" as SRC_IT
+  rectangle "External Signals\n(Market, Macro, Regulatory)" as SRC_EXT
+  rectangle "Leadership Inputs\n(Assumptions, Overrides)" as SRC_HUM
+}
+
+package "CCC (Leadership Experience)" as P_CCC {
+  component "Command Interface\n(Alerts, Scenarios,\nTrade-offs, Override)" as UI
+  component "Governance & Audit Console\n(Replay, Evidence,\nPolicy Controls)" as GOV_UI
+}
+
+package "ASE Control Plane" as P_CP {
+  component "Orchestrator\n(Event routing, Policies,\nWorkflow state)" as ORCH
+  component "Tool Registry + Guardrails\n(Constraints, RBAC,\nRedaction, Approvals)" as GUARD
+}
+
+package "ASE Agent Set (Roles + Learning Responsibilities)" as P_AGENTS {
+  package "Operational Agents" as P_OPAG {
+    component "Signal Ingestion Agent" as AG_ING
+    component "Entity Resolution Agent" as AG_MDM
+    component "Graph Construction Agent" as AG_GRAPH
+    component "Causal Reasoning Agent" as AG_CAUSAL
+    component "Scenario Simulation Agent" as AG_SIM
+    component "Strategy Optimization Agent" as AG_OPT
+    component "Decision Explanation Agent" as AG_EXP
+    component "Governance & Audit Agent" as AG_GOV
+  }
+  package "Learning Agent" as P_LAG {
+    component "Learning Agent\n(Closed-loop tuning controller)" as AG_LEARN
+  }
+}
+
+package "End-to-End Architecture Layers" as P_LAYERS {
+  package "4.1 Ingestion Fabric" as L1 {
+    component "Connectors\n(APIs, Streams, Files,\nDB extracts, SaaS)" as CONN
+    component "Validation + Drift Detection\n(Quality, schema drift,\nprovenance capture)" as VALID
+    component "Timestamping + Lineage Tagging" as LINEAGE
+  }
+
+  package "4.2 Semantic Normalization" as L2 {
+    component "Canonical Model Mapper\n(taxonomy, KPIs,\ntime, geo, BU)" as CANON
+    component "Entity Matching / MDM\n(people, org, cost center,\nservice, platform)" as MDM
+  }
+
+  package "4.3 Enterprise Knowledge Graph" as L3 {
+    database "Enterprise Knowledge Graph\n(entities, relationships,\ncausal hypotheses,\nconfidence levels)" as EKG
+    component "Causality Classifier\n(causal/probable/correlated/\nexpert/statistical/inferred)" as CAUS_CLASS
+  }
+
+  package "4.4 Signal Intelligence" as L4 {
+    component "Feature Builder\n(derived signals)" as FEAT
+    component "Event Detection\n(patterns, conflicts,\nemerging risk)" as EVENT
+  }
+
+  package "4.5 Scenario Simulation" as L5 {
+    database "Scenario Store\n(assumptions, runs,\noutputs)" as SCEN
+    component "Simulation Runner\n(what-if, sensitivity,\nstress tests)" as SIMRUN
+  }
+
+  package "4.6 Strategy Optimizer" as L6 {
+    component "Multi-Objective Optimizer\n(Pareto frontier,\nconstraints)" as OPT
+  }
+
+  package "4.7 Explainable Decision Layer" as L7 {
+    database "Decision Ledger\n(immutable lineage:\nevidence, versions,\ninputs, outputs)" as LEDGER
+    component "Decision Composer\n(rationale, variables,\nrisk/impact,\nconfidence)" as COMPOSE
+    component "Confidence Engine\n(component + overall\nconfidence)" as CONF
+  }
+
+  package "4.8 Leadership Execution Loop" as L8 {
+    component "Recommendation Cards\n(options, trade-offs)" as CARDS
+    component "Override Workflow\n(assumptions, recompute)" as OVR
+    component "Guided Execution Router\n(to downstream systems)" as ROUTE
+  }
+
+  package "4.9 Continuous Learning" as L9 {
+    component "Learning Controller\n(versioned datasets,\npromotion gates)" as LEARN_CTRL
+    component "Graph Learning\n(confidence + hypotheses)" as LEARN_G
+    component "Simulation Calibration\n(distributions, models)" as LEARN_S
+    component "Policy/Ranking Tuning\n(conservative bandits)" as LEARN_P
+    component "Confidence Calibration\n(reliability curves)" as LEARN_C
+  }
+}
+
+package "Execution & Outcomes" as P_EXEC {
+  rectangle "Downstream Execution\n(Automation, ITSM/BPM,\nApprovals, Workflows)" as EXEC
+  component "Outcome Telemetry\n(Impact KPIs)" as OUT
+  component "Drift & Quality Monitoring\n(Data/Concept drift)" as DRIFT
+}
+
+' Multi-agent control plane and orchestration (explicit, but low arrow density)
+ORCH --> GUARD : enforce
+UI --> ORCH : requests/overrides
+GOV_UI --> ORCH : policies
+
+' Orchestrator routes work to the agent set
+ORCH --> P_AGENTS : route tasks
+
+' Sources -> Ingestion fabric
+SRC_FIN --> CONN
+SRC_HR --> CONN
+SRC_OPS --> CONN
+SRC_IT --> CONN
+SRC_EXT --> CONN
+SRC_HUM --> OVR
+
+CONN --> VALID
+VALID --> LINEAGE
+LINEAGE --> CANON
+CANON --> MDM
+MDM --> EKG
+EKG --> FEAT
+FEAT --> EVENT
+EVENT --> SIMRUN : trigger
+SIMRUN --> SCEN
+SIMRUN --> OPT
+OPT --> LEDGER : write\noptions + trade-offs
+SCEN --> LEDGER : scenario refs
+EKG --> LEDGER : evidence refs
+LEDGER --> COMPOSE
+CONF --> COMPOSE
+COMPOSE --> CARDS
+CARDS --> UI
+OVR --> ORCH : recompute
+ROUTE --> EXEC
+ORCH --> ROUTE : approved
+EXEC --> OUT
+DRIFT --> VALID
+
+' Learning loop (governed, versioned)
+OUT --> LEARN_CTRL
+DRIFT --> LEARN_CTRL
+LEARN_CTRL --> LEARN_G
+LEARN_CTRL --> LEARN_S
+LEARN_CTRL --> LEARN_P
+LEARN_CTRL --> LEARN_C
+LEARN_G --> EKG
+LEARN_S --> SCEN
+LEARN_P --> LEDGER
+LEARN_C --> CONF
+LEARN_CTRL --> LEDGER : learning logs\n+ versions
+
+' Governance / audit paths
+LEDGER --> GOV_UI : replay
+GUARD --> GOV_UI : policy state
+
+' Agent-to-component mapping (kept sparse; shows responsibility without clutter)
+AG_ING --> CONN
+AG_ING --> VALID
+AG_MDM --> MDM
+AG_GRAPH --> EKG
+AG_CAUSAL --> CAUS_CLASS
+AG_CAUSAL --> LEDGER
+AG_SIM --> SIMRUN
+AG_SIM --> SCEN
+AG_OPT --> OPT
+AG_OPT --> LEDGER
+AG_EXP --> COMPOSE
+AG_EXP --> CARDS
+AG_GOV --> GUARD
+AG_GOV --> LEDGER
+
+' Learning ownership: how each area improves over time (no extra arrows; use notes)
+note right of AG_ING
+Learns:
+- source quality baselines
+- schema drift patterns
+- anomaly thresholds
+end note
+
+note right of AG_MDM
+Learns:
+- entity matching weights
+- identity resolution rules
+end note
+
+note right of AG_GRAPH
+Learns:
+- edge confidence updates
+- hypothesis lifecycle signals
+end note
+
+note right of AG_SIM
+Learns:
+- distribution calibration
+- parameter priors by region/team
+end note
+
+note right of AG_OPT
+Learns:
+- playbook ranking priors
+- constraint satisfaction patterns
+end note
+
+note right of AG_EXP
+Learns:
+- explanation templates by persona
+- signal-to-rationale ordering
+end note
+
+note right of AG_GOV
+Learns:
+- policy violation patterns
+- redaction rule effectiveness
+end note
+
+' Learning Agent orchestrates governed updates into the learning subsystem
+AG_LEARN --> LEARN_CTRL
+LEARN_CTRL --> AG_LEARN : approve/promote
+
+' Hidden links to stabilize layout (no visible arrows)
+UI -[hidden]-> P_LAYERS
+P_LAYERS -[hidden]-> EXEC
+
+@enduml

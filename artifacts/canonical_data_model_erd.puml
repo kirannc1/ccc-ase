@@ -1,0 +1,147 @@
+@startuml
+title CCC/ASE Canonical Data Model - ERD (Minimum Set)
+
+left to right direction
+skinparam linetype ortho
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam nodesep 35
+skinparam ranksep 55
+
+skinparam DefaultFontName Arial
+skinparam ArrowColor #2C3E50
+
+skinparam class {
+  BackgroundColor #F7F9FC
+  BorderColor #2C3E50
+  FontColor #2C3E50
+}
+
+legend left
+  == Notes ==
+  Logical ERD derived from `data_architecture.md` canonical entities.
+  Physical storage can be lakehouse tables, SQL, or Cosmos documents.
+endlegend
+
+class OrgUnit {
+  +org_unit_id
+  name
+  parent_org_unit_id
+}
+
+class Team {
+  +team_id
+  org_unit_id
+  service_line_id
+  manager_person_id
+}
+
+class Person {
+  +person_id
+  team_id
+  role_id
+  location_id
+  employment_status
+  criticality_tier
+}
+
+class Role {
+  +role_id
+  role_family
+  level
+  critical_role_flag
+}
+
+class Skill {
+  +skill_id
+  name
+  taxonomy_version
+}
+
+class PersonSkill {
+  +person_id
+  +skill_id
+  proficiency
+  last_validated_ts
+}
+
+class CostCenter {
+  +cost_center_id
+  name
+  owner_org_unit_id
+}
+
+class Vendor {
+  +vendor_id
+  name
+  contract_end_ts
+  concentration_risk_score
+}
+
+class SpendFact {
+  +ts
+  cost_center_id
+  vendor_id
+  amount
+  currency
+  category
+}
+
+class Service {
+  +service_id
+  name
+  service_owner_team_id
+}
+
+class Platform {
+  +platform_id
+  name
+  platform_owner_team_id
+}
+
+class SlaMetricFact {
+  +ts
+  service_id
+  metric_name
+  value
+  units
+  breach_risk_score
+}
+
+class ProcessMetricFact {
+  +ts
+  process_id
+  cycle_time
+  throughput
+  rework_rate
+}
+
+class ExternalSignal {
+  +external_signal_id
+  name
+  signal_type
+  trust_tier
+  observed_ts
+  value
+  units
+  geo_id
+}
+
+OrgUnit "1" <-- "0..*" OrgUnit : parent
+OrgUnit "1" <-- "0..*" Team : contains
+Team "1" <-- "0..*" Person : has
+Role "1" <-- "0..*" Person : assigned
+
+Person "1" <-- "0..*" PersonSkill
+Skill "1" <-- "0..*" PersonSkill
+
+OrgUnit "1" <-- "0..*" CostCenter : owns
+CostCenter "1" <-- "0..*" SpendFact : spends
+Vendor "1" <-- "0..*" SpendFact : to
+
+Team "1" <-- "0..*" Service : owns
+Team "1" <-- "0..*" Platform : owns
+Service "1" <-- "0..*" SlaMetricFact : measures
+
+@enduml
+

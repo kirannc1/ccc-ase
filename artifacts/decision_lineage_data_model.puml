@@ -1,0 +1,118 @@
+@startuml
+title CCC/ASE Decision Lineage - Data Model (SDA + Ledger + Replay)
+
+left to right direction
+skinparam linetype ortho
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam nodesep 35
+skinparam ranksep 60
+
+skinparam DefaultFontName Arial
+skinparam ArrowColor #2C3E50
+
+skinparam class {
+  BackgroundColor #F7F9FC
+  BorderColor #2C3E50
+  FontColor #2C3E50
+}
+
+legend left
+  == Goal ==
+  Make every recommendation and override replayable via immutable artifacts.
+endlegend
+
+class Recommendation {
+  +recommendation_id
+  +decision_id
+  tenant_id
+  status
+  urgency
+  created_ts
+  updated_ts
+  current_sda_artifact_id
+}
+
+class SDA_Artifact {
+  +artifact_id
+  schema_version
+  uri
+  hash
+  created_ts
+}
+
+class Override {
+  +override_id
+  recommendation_id
+  decision_id
+  override_type
+  reason_code
+  created_ts
+  actor_id
+  justification
+}
+
+class ScenarioRunRef {
+  +scenario_run_id
+  scenario_id
+  label
+}
+
+class EvidencePack_Artifact {
+  +artifact_id
+  uri
+  hash
+}
+
+class Scorecard {
+  +recommendation_id
+  dimension
+  delta_score_minus5_to_plus5
+  risk_score_1_to_5
+}
+
+class DecisionLedgerEntry {
+  +ledger_entry_id
+  audit_trace_id
+  ts
+  decision_id
+  recommendation_id
+  entry_type
+  payload_artifact_id
+}
+
+class AuditEvent {
+  +audit_trace_id
+  +event_id
+  event_type
+  ts
+  actor_id
+  correlation_id
+}
+
+Recommendation "1" --> "1" SDA_Artifact : current SDA
+Recommendation "1" --> "0..*" Override : has
+Recommendation "1" --> "0..*" Scorecard : scorecard
+
+SDA_Artifact "1" --> "0..*" ScenarioRunRef : references
+SDA_Artifact "1" --> "0..*" EvidencePack_Artifact : evidence
+
+Recommendation "1" --> "1..*" DecisionLedgerEntry : ledger
+DecisionLedgerEntry "1..*" --> "1" AuditEvent : trace
+
+note right of DecisionLedgerEntry
+Append-only:
+- sda_snapshot
+- override_snapshot
+- policy_check
+- execution_update
+- learning_promotion
+end note
+
+note right of Recommendation
+Mutations create new ledger entries;
+historical SDA artifacts remain immutable.
+end note
+
+@enduml
+

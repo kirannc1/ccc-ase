@@ -1,0 +1,210 @@
+@startuml
+title CCC/ASE - Azure Infrastructure Landscape (CAF + ALZ)
+
+left to right direction
+skinparam linetype ortho
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam nodesep 40
+skinparam ranksep 60
+
+skinparam DefaultFontName Arial
+skinparam ArrowColor #2C3E50
+
+skinparam package {
+  BackgroundColor #FFFFFF
+  BorderColor #34495E
+  FontColor #2C3E50
+}
+skinparam rectangle {
+  BackgroundColor #FFFFFF
+  BorderColor #34495E
+  FontColor #2C3E50
+}
+skinparam component {
+  BackgroundColor #F7F9FC
+  BorderColor #2C3E50
+  FontColor #2C3E50
+}
+skinparam database {
+  BackgroundColor #FFF9E6
+  BorderColor #8E6B00
+  FontColor #2C3E50
+}
+
+legend left
+  == Scope ==
+  Infrastructure landscape view aligned to:
+  - Cloud Adoption Framework (CAF) lifecycle
+  - Azure Landing Zones (ALZ) enterprise-scale foundations
+endlegend
+
+package "CAF Lifecycle (Governance Overlay)" as CAF {
+  rectangle "Strategy" as CAF_S
+  rectangle "Plan" as CAF_P
+  rectangle "Ready (ALZ Foundation)" as CAF_R
+  rectangle "Adopt (Workloads)" as CAF_A
+  rectangle "Govern" as CAF_G
+  rectangle "Manage" as CAF_M
+}
+
+package "Azure Tenant (ALZ Enterprise-Scale)" as TENANT {
+  package "Management Groups" as MG {
+    rectangle "Tenant Root Group" as MG_ROOT
+    rectangle "Platform\n(Management/Connectivity/Shared)" as MG_PLATFORM
+    rectangle "LandingZones\n(Workloads)" as MG_LZ
+    rectangle "Sandbox (optional)" as MG_SB
+  }
+
+  package "Platform Subscriptions" as SUB_PLAT {
+    package "Platform-Management" as SUB_MGMT {
+      component "Log Analytics\n+ Azure Monitor" as MON
+      component "Microsoft Sentinel\n(optional)" as SENT
+      component "Azure Policy\nCompliance" as POLICY
+      component "Automation / Runbooks" as AUTO
+    }
+    package "Platform-Connectivity" as SUB_CONN {
+      component "Virtual WAN Hubs\n(or Hub VNet)" as VWAN
+      component "Azure Firewall Premium\n(or NVA)" as FW
+      component "ExpressRoute\n+ VPN Gateway" as ERVPN
+      component "Private DNS Resolver" as DNSR
+      component "DDoS Protection\n(where applicable)" as DDOS
+      component "Virtual Network Manager" as VNM
+    }
+    package "Platform-SharedServices\n(optional)" as SUB_SHARED {
+      component "Shared ACR\n(optional)" as ACR_SHARED
+      component "Shared Integration\n(optional)" as INTEG_SHARED
+    }
+  }
+
+  package "Workload Subscriptions" as SUB_WORK {
+    package "CCC-DevTest" as SUB_DEV {
+      rectangle "Dev/Test VNets\n(spokes)" as VNET_DEV
+      component "AKS (non-prod)" as AKS_DEV
+    }
+    package "CCC-Prod" as SUB_PROD {
+      rectangle "Prod VNets\n(spokes)" as VNET_PROD
+      component "AKS (prod)" as AKS_PROD
+    }
+  }
+}
+
+package "CCC/ASE Workload (per environment)" as WORKLOAD {
+  package "Network Segmentation (Spokes)" as SPOKES {
+    rectangle "ccc-app" as SP_APP
+    rectangle "ccc-data" as SP_DATA
+    rectangle "ccc-ml" as SP_ML
+    rectangle "shared-integration" as SP_INT
+  }
+
+  package "Core Platform Services" as SVC {
+    component "API Management" as APIM
+    component "Event Hubs" as EH
+    component "Service Bus" as SB
+    component "Data Factory" as ADF
+    component "Functions / Logic Apps\n(select connectors/workflows)" as FUNC
+
+    component "Key Vault" as KV
+    component "Microsoft Entra ID" as ENTRA
+  }
+
+  package "Data Plane (Governed Stores)" as DATA {
+    database "ADLS Gen2\n(raw + curated)" as ADLS
+    database "Azure SQL Database\n(metadata/config)" as SQL
+    database "Cosmos DB\n(doc stores)" as COSMOS
+    database "Cosmos DB for Gremlin\n(EKG)" as GREMLIN
+    database "Azure AI Search" as SEARCH
+    database "Azure Cache for Redis" as REDIS
+    database "Decision Ledger\n(append-only + artifacts)" as LEDGER
+  }
+
+  package "AI/ML" as AIML {
+    component "Azure Machine Learning\n(registry, eval, pipelines)" as AML
+    component "Azure OpenAI" as AOAI
+  }
+
+  package "Security & Posture" as SEC {
+    component "Defender for Cloud" as DEFENDER
+    component "Private Endpoints\n(Private Link)" as PLINK
+    component "RBAC/ABAC + PIM" as RBAC
+  }
+}
+
+package "Hybrid / External" as HYB {
+  rectangle "On-Prem Data Centers" as ONPREM
+  rectangle "SaaS Platforms\n(Workday, ServiceNow,\nERP SaaS, etc.)" as SAAS
+  rectangle "Other Clouds\n(optional)" as OTHERCLOUD
+}
+
+' --- ALZ relationships ---
+MG_ROOT --> MG_PLATFORM
+MG_ROOT --> MG_LZ
+MG_ROOT --> MG_SB
+
+MG_PLATFORM --> SUB_PLAT
+MG_LZ --> SUB_WORK
+
+' --- Connectivity / hybrid ---
+ONPREM --> ERVPN : private connectivity
+SAAS --> VWAN : internet/S2S as needed
+OTHERCLOUD --> VWAN : interconnect
+
+VWAN --> FW : egress/ingress control
+VWAN --> DNSR : name resolution
+VWAN --> VNM : segmentation governance
+
+' --- Workload subscriptions connect to platform connectivity ---
+VNET_DEV --> VWAN : vWAN connect
+VNET_PROD --> VWAN : vWAN connect
+
+' --- CCC workload services (shown once; deployed per env) ---
+ENTRA --> APIM : auth
+APIM --> AKS_DEV : non-prod APIs
+APIM --> AKS_PROD : prod APIs
+
+EH --> AKS_DEV : events
+EH --> AKS_PROD : events
+SB --> AKS_DEV : workflow cmds
+SB --> AKS_PROD : workflow cmds
+ADF --> ADLS : batch ingest
+FUNC --> EH : connector events
+
+AKS_DEV --> KV : secrets via MI
+AKS_PROD --> KV : secrets via MI
+
+' --- Data plane connectivity (private) ---
+PLINK --> ADLS
+PLINK --> SQL
+PLINK --> COSMOS
+PLINK --> GREMLIN
+PLINK --> SEARCH
+PLINK --> REDIS
+PLINK --> LEDGER
+PLINK --> KV
+
+AKS_PROD --> ADLS
+AKS_PROD --> GREMLIN
+AKS_PROD --> LEDGER
+AKS_PROD --> AML
+AKS_PROD --> AOAI
+
+' --- Observability / governance ---
+AKS_DEV --> MON
+AKS_PROD --> MON
+APIM --> MON
+EH --> MON
+SB --> MON
+ADF --> MON
+
+POLICY --> SUB_PLAT : initiatives
+DEFENDER --> SUB_PLAT : posture
+RBAC --> SUB_WORK : access control
+
+' Hidden links to stabilize layout (no visible arrows)
+CAF_M -[hidden]-> TENANT
+TENANT -[hidden]-> WORKLOAD
+WORKLOAD -[hidden]-> HYB
+
+@enduml
+

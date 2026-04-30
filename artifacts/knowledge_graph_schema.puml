@@ -1,0 +1,94 @@
+@startuml
+title Enterprise Knowledge Graph (EKG) - Node/Edge Schema (Causal + Confidence)
+
+left to right direction
+skinparam linetype ortho
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam nodesep 35
+skinparam ranksep 55
+
+skinparam DefaultFontName Arial
+skinparam ArrowColor #2C3E50
+
+skinparam class {
+  BackgroundColor #F7F9FC
+  BorderColor #2C3E50
+  FontColor #2C3E50
+}
+
+legend left
+  == Evidence Class ==
+  confirmed_causal | probable_causal | correlated_only |
+  expert_defined_rule | statistically_supported_link | inferred_dependency
+endlegend
+
+class Node {
+  +node_id
+  +node_type
+  tenant_id
+  domain
+  geo_id
+  valid_from_ts
+  valid_to_ts
+  source_refs[]
+  last_updated_ts
+}
+
+class Edge {
+  +edge_id
+  +from_node_id
+  +to_node_id
+  relationship_type
+  direction
+  evidence_class
+  confidence_0_1
+  basis_ref
+  valid_from_ts
+  valid_to_ts
+  source_refs[]
+}
+
+class CausalHypothesis {
+  +hypothesis_id
+  statement
+  status
+  primary_edge_id
+  supporting_evidence_ids[]
+  confidence_0_1
+  last_reviewed_ts
+  owner_group
+}
+
+class EvidenceItem {
+  +evidence_id
+  source_system
+  source_type
+  observed_ts
+  freshness_minutes
+  classification
+  confidence_0_1
+  uri
+}
+
+Node "1" <-- "0..*" Edge : from
+Node "1" <-- "0..*" Edge : to
+
+Edge "1" <-- "0..*" CausalHypothesis : primary
+EvidenceItem "0..*" --> "0..*" CausalHypothesis : supports
+
+note right of Edge
+Must satisfy decision standards:
+- evidence_class is explicit
+- confidence drives graph_confidence
+- temporal validity supported
+end note
+
+note right of CausalHypothesis
+Governance lifecycle:
+proposed -> validated -> deprecated
+Owner and review cadence required
+end note
+
+@enduml
+
