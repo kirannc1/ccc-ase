@@ -2,7 +2,7 @@
 
 ## Setup
 - From `D:\\kiran\\poc\\poc\\src\\ui` run: `npm i`
-- Dev: `npm run dev`
+- Dev: `npm run start`
 - Tests: `npm run test` / `npm run test:coverage`
 
 ## Architecture

@@ -1,6 +1,7 @@
 "use client";
 
-import { Body1, Divider, Tab, TabList } from "@fluentui/react-components";
+import { Body1, makeStyles, tokens } from "@fluentui/react-components";
+import { Divider, Tab, TabList } from "@fluentui/react-components";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ReactNode } from "react";
@@ -8,6 +9,12 @@ import { ReactNode } from "react";
 import styles from "./Shell.module.css";
 
 type NavItem = { href: string; label: string; value: string };
+
+const useStyles = makeStyles({
+  semiBold: {
+    fontWeight: tokens.fontWeightSemibold,
+  },
+});
 
 const navItems: NavItem[] = [
   { href: "/", label: "Dashboard", value: "dashboard" },
@@ -30,12 +37,13 @@ export function Shell({ children }: { children: ReactNode }) {
     <div className={styles.root}>
       <header className={styles.header}>
         <div className={styles.brand}>
-          <Body1 weight="semibold">CCC ASE</Body1>
+          {/* <Body1 weight="semibold">CCC ASE</Body1> */}
+          <Body1 className={styles.semiBold}>CCC ASE</Body1>;
         </div>
         <TabList selectedValue={selectedValue}>
           {navItems.map((item) => (
             <Tab key={item.value} value={item.value}>
-              <Link className={styles.link} href={item.href}>
+              <Link className={styles.link} href={item.href as any}>
                 {item.label}
               </Link>
             </Tab>
