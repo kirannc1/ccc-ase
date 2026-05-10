@@ -18,5 +18,4 @@ src/*.pyc
 src/.dbcheck
 src/.sqlite
 src/.tmp-test
-artifacts/
 .git/
