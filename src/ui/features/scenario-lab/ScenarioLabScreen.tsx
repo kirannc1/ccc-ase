@@ -3,7 +3,7 @@
 import { Button, Card, CardHeader, Field, Input, Slider, Text, Title2 } from "@fluentui/react-components";
 import { useMemo } from "react";
 
-import { ChartWrapper } from "@/components/ChartWrapper/ChartWrapper";
+import { ChartWrapper, type EChartsOption } from "@/components/ChartWrapper/ChartWrapper";
 import { GraphViewer } from "@/components/GraphViewer/GraphViewer";
 import { useOptimization } from "@/hooks/useOptimization";
 import { useScenarioSimulation } from "@/hooks/useScenarioSimulation";
@@ -14,7 +14,7 @@ export function ScenarioLabScreen() {
   const simulate = useScenarioSimulation();
   const optimize = useOptimization();
 
-  const chartOption = useMemo(() => {
+  const chartOption = useMemo<EChartsOption>(() => {
     const scenarios = simulate.data?.scenarios ?? [];
     return {
       tooltip: { trigger: "axis" },

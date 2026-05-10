@@ -20,11 +20,11 @@ const ErrorEnvelopeSchema = z.object({
   detail: z.string().optional()
 });
 
-export async function fetchJson<T>(
+export async function fetchJson<TSchema extends z.ZodTypeAny>(
   path: string,
-  schema: z.ZodType<T>,
+  schema: TSchema,
   options: FetcherOptions = {}
-): Promise<T> {
+): Promise<z.output<TSchema>> {
   const response = await fetch(path, {
     method: options.method ?? "GET",
     headers: {

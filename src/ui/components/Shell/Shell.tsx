@@ -1,13 +1,14 @@
 "use client";
 
-import { Body1, Divider, Tab, TabList } from "@fluentui/react-components";
+import { Body1Strong, Divider, Tab, TabList } from "@fluentui/react-components";
 import Link from "next/link";
+import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import { ReactNode } from "react";
 
 import styles from "./Shell.module.css";
 
-type NavItem = { href: string; label: string; value: string };
+type NavItem = { href: Route; label: string; value: string };
 
 const navItems: NavItem[] = [
   { href: "/", label: "Dashboard", value: "dashboard" },
@@ -30,7 +31,7 @@ export function Shell({ children }: { children: ReactNode }) {
     <div className={styles.root}>
       <header className={styles.header}>
         <div className={styles.brand}>
-          <Body1 weight="semibold">CCC ASE</Body1>
+          <Body1Strong>CCC ASE</Body1Strong>
         </div>
         <TabList selectedValue={selectedValue}>
           {navItems.map((item) => (

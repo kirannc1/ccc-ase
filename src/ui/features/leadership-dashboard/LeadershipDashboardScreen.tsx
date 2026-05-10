@@ -4,7 +4,7 @@ import { Button, Card, CardHeader, Caption1, Text, Title2 } from "@fluentui/reac
 import Link from "next/link";
 import { useMemo } from "react";
 
-import { ChartWrapper } from "@/components/ChartWrapper/ChartWrapper";
+import { ChartWrapper, type EChartsOption } from "@/components/ChartWrapper/ChartWrapper";
 import { GraphViewer } from "@/components/GraphViewer/GraphViewer";
 import { useKpis } from "@/hooks/useKpis";
 import { useScenarioSimulation } from "@/hooks/useScenarioSimulation";
@@ -13,7 +13,7 @@ export function LeadershipDashboardScreen() {
   const kpis = useKpis();
   const simulate = useScenarioSimulation();
 
-  const chartOption = useMemo(() => {
+  const chartOption = useMemo<EChartsOption>(() => {
     const scenarios = simulate.data?.scenarios ?? [];
     return {
       tooltip: { trigger: "axis" },

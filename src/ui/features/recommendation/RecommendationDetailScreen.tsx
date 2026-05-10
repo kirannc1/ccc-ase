@@ -3,7 +3,7 @@
 import { Button, Card, CardHeader, Field, Input, Text, Title2 } from "@fluentui/react-components";
 import { useMemo, useState } from "react";
 
-import { ChartWrapper } from "@/components/ChartWrapper/ChartWrapper";
+import { ChartWrapper, type EChartsOption } from "@/components/ChartWrapper/ChartWrapper";
 import { useDecisioning } from "@/hooks/useDecisioning";
 import { useExplanation } from "@/hooks/useExplanation";
 import { useOptimization } from "@/hooks/useOptimization";
@@ -19,7 +19,7 @@ export function RecommendationDetailScreen() {
   const [overrideReason, setOverrideReason] = useState("manual adjustment");
   const [overrideStatus, setOverrideStatus] = useState<OverrideRequest["override_status"]>("APPROVED");
 
-  const confidenceOption = useMemo(() => {
+  const confidenceOption = useMemo<EChartsOption>(() => {
     const before = decide.data?.confidence ?? 0;
     const after = overrideStatus === "REJECTED" ? Math.max(0, before - 0.2) : before;
     return {
