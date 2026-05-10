@@ -12,7 +12,6 @@ build/
 .DS_Store
 src_old/
 idea_git.md
-artifacts/
 src/__pycache__/
 src/*.pyc
 src/.dbcheck
