@@ -27,7 +27,7 @@ export function GraphViewer({
         ...edges.map((edge) => ({ data: { id: edge.id, source: edge.source, target: edge.target, label: edge.label ?? "" } }))
       ],
       style: [
-        { selector: "node", style: { label: "data(label)", "text-wrap": "wrap", "text-max-width": '140px', "background-color": "#4F6BED", color: "#111" } },
+        { selector: "node", style: { label: "data(label)", "text-wrap": "wrap", "text-max-width": 140, "background-color": "#4F6BED", color: "#111" } },
         { selector: 'node[status = "risk"]', style: { "background-color": "#D13438" } },
         { selector: 'node[status = "highlight"]', style: { "background-color": "#00B7C3" } },
         { selector: "edge", style: { width: 2, "line-color": "#bbb", "target-arrow-color": "#bbb", "target-arrow-shape": "triangle", "curve-style": "bezier", label: "data(label)" } }
