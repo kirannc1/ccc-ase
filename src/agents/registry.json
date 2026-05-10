@@ -1,0 +1,38 @@
+﻿[
+    {
+        "name":  "signal_ingestion",
+        "path":  "agents/signal_ingestion"
+    },
+    {
+        "name":  "entity_resolution",
+        "path":  "agents/entity_resolution"
+    },
+    {
+        "name":  "graph_construction",
+        "path":  "agents/graph_construction"
+    },
+    {
+        "name":  "causal_reasoning",
+        "path":  "agents/causal_reasoning"
+    },
+    {
+        "name":  "scenario_simulation",
+        "path":  "agents/scenario_simulation"
+    },
+    {
+        "name":  "strategy_optimization",
+        "path":  "agents/strategy_optimization"
+    },
+    {
+        "name":  "decision_explanation",
+        "path":  "agents/decision_explanation"
+    },
+    {
+        "name":  "governance_audit",
+        "path":  "agents/governance_audit"
+    },
+    {
+        "name":  "learning",
+        "path":  "agents/learning"
+    }
+]

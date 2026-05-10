@@ -1,0 +1,505 @@
+x-app-common: &app-common
+  env_file: .env
+  environment:
+    SRCGCC_SQLITE_DIR: /app/data
+  restart: unless-stopped
+  healthcheck:
+    test:
+      - CMD-SHELL
+      - python -c "from urllib.request import urlopen; urlopen('http://localhost:8000/health').read()"
+    interval: 10s
+    timeout: 5s
+    retries: 10
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    env_file: .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infra/local/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mongodb:
+    image: mongo:7
+    env_file: .env
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    ports:
+      - "${MONGO_PORT}:27017"
+    volumes:
+      - mongo-data:/data/db
+      - ./infra/local/mongo/init.js:/docker-entrypoint-initdb.d/01-init.js:ro
+
+  neo4j:
+    image: neo4j:5-community
+    env_file: .env
+    environment:
+      NEO4J_AUTH: ${NEO4J_AUTH}
+      NEO4J_server_memory_pagecache_size: 512M
+      NEO4J_server_memory_heap_initial__size: 512M
+      NEO4J_server_memory_heap_max__size: 512M
+    ports:
+      - "${NEO4J_HTTP_PORT}:7474"
+      - "${NEO4J_BOLT_PORT}:7687"
+    volumes:
+      - neo4j-data:/data
+      - ./infra/local/neo4j/init.cypher:/var/lib/neo4j/import/init.cypher:ro
+
+  opensearch:
+    image: opensearchproject/opensearch:2.15.0
+    env_file: .env
+    environment:
+      discovery.type: single-node
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+      bootstrap.memory_lock: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      DISABLE_SECURITY_PLUGIN: "true"
+    ports:
+      - "${OPENSEARCH_PORT}:9200"
+      - "${OPENSEARCH_DASHBOARDS_PORT}:9600"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT}:6379"
+    volumes:
+      - redis-data:/data
+
+  redpanda:
+    image: redpandadata/redpanda:v24.1.6
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp
+      - "1"
+      - --memory
+      - "1G"
+      - --reserve-memory
+      - "0M"
+      - --node-id
+      - "0"
+      - --check=false
+      - --kafka-addr
+      - internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr
+      - internal://redpanda:9092,external://localhost:19092
+      - --pandaproxy-addr
+      - 0.0.0.0:8082
+      - --advertise-pandaproxy-addr
+      - localhost:8082
+    ports:
+      - "${REDPANDA_PORT}:19092"
+      - "${REDPANDA_INTERNAL_PORT}:9092"
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+
+  redpanda-init:
+    image: redpandadata/redpanda:v24.1.6
+    depends_on:
+      - redpanda
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        rpk topic create source.raw.received source.stream.received canonical.event.created
+        entity.resolution.completed graph.updated strategic.event.detected scenario.requested
+        scenario.completed optimization.completed recommendation.created recommendation.approved
+        recommendation.overridden recommendation.recomputed execution.dispatched execution.completed
+        feedback.received learning.promoted --brokers redpanda:9092 || true
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    env_file: .env
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    ports:
+      - "${RABBITMQ_PORT}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT}:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+      - ./infra/local/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+      - ./infra/local/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+
+  keycloak-db:
+    image: postgres:16-alpine
+    env_file: .env
+    environment:
+      POSTGRES_DB: ${KEYCLOAK_DB}
+      POSTGRES_USER: ${KEYCLOAK_DB_USER}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+    ports:
+      - "${KEYCLOAK_DB_PORT}:5432"
+    volumes:
+      - keycloak-db-data:/var/lib/postgresql/data
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.2
+    env_file: .env
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_DB: postgres
+      KC_DB_URL_HOST: keycloak-db
+      KC_DB_URL_PORT: 5432
+      KC_DB_URL_DATABASE: ${KEYCLOAK_DB}
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      KC_HTTP_RELATIVE_PATH: /auth
+    ports:
+      - "${KEYCLOAK_PORT}:8080"
+    volumes:
+      - ./infra/local/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    depends_on:
+      - keycloak-db
+
+  kong:
+    image: kong:3.7
+    env_file: .env
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+    ports:
+      - "${KONG_PROXY_PORT}:8000"
+      - "${KONG_ADMIN_PORT}:8001"
+    volumes:
+      - ./infra/local/kong/kong.yml:/kong/declarative/kong.yml:ro
+    depends_on:
+      - source_connector
+
+  minio:
+    image: minio/minio:RELEASE.2024-08-03T04-33-23Z
+    env_file: .env
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "${MINIO_PORT}:9000"
+      - "${MINIO_CONSOLE_PORT}:9001"
+    volumes:
+      - minio-data:/data
+
+  vault:
+    image: hashicorp/vault:1.17
+    cap_add:
+      - IPC_LOCK
+    env_file: .env
+    command: vault server -dev -dev-root-token-id=${VAULT_ROOT_TOKEN}
+    environment:
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+      VAULT_ADDR: http://127.0.0.1:8200
+    ports:
+      - "${VAULT_PORT}:8200"
+    volumes:
+      - vault-data:/vault/data
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    ports:
+      - "${PROMETHEUS_PORT}:9090"
+    volumes:
+      - ./infra/local/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+
+  grafana:
+    image: grafana/grafana:11.1.4
+    env_file: .env
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+    ports:
+      - "${GRAFANA_PORT}:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./infra/local/monitoring/grafana-datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml:ro
+    depends_on:
+      - prometheus
+      - loki
+
+  loki:
+    image: grafana/loki:3.1.1
+    ports:
+      - "${LOKI_PORT}:3100"
+    command: -config.file=/etc/loki/config.yml
+    volumes:
+      - ./infra/local/monitoring/loki.yml:/etc/loki/config.yml:ro
+      - loki-data:/loki
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.15.1
+    env_file: .env
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --default-artifact-root /mlflow/artifacts
+    ports:
+      - "${MLFLOW_PORT}:5000"
+    volumes:
+      - mlflow-data:/mlflow
+
+  source_connector:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/source_connector/Dockerfile
+    ports:
+      - "${SOURCE_CONNECTOR_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+    depends_on:
+      - postgres
+      - mongodb
+      - redpanda
+      - rabbitmq
+
+  batch_ingestion:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/batch_ingestion/Dockerfile
+    ports:
+      - "${BATCH_INGESTION_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+    depends_on:
+      - source_connector
+
+  streaming_ingestion:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/streaming_ingestion/Dockerfile
+    ports:
+      - "${STREAMING_INGESTION_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+    depends_on:
+      - source_connector
+
+  document_parsing:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/document_parsing/Dockerfile
+    ports:
+      - "${DOCUMENT_PARSING_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+    depends_on:
+      - batch_ingestion
+      - streaming_ingestion
+
+  semantic_normalization:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/semantic_normalization/Dockerfile
+    ports:
+      - "${SEMANTIC_NORMALIZATION_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+    depends_on:
+      - document_parsing
+
+  entity_resolution:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/entity_resolution/Dockerfile
+    ports:
+      - "${ENTITY_RESOLUTION_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+    depends_on:
+      - semantic_normalization
+
+  feature_engineering:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/feature_engineering/Dockerfile
+    ports:
+      - "${FEATURE_ENGINEERING_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+    depends_on:
+      - entity_resolution
+
+  knowledge_graph:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/knowledge_graph/Dockerfile
+    ports:
+      - "${KNOWLEDGE_GRAPH_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+    depends_on:
+      - entity_resolution
+
+  signal_intelligence:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/signal_intelligence/Dockerfile
+    environment:
+      SRCGCC_SQLITE_DIR: /app/data
+      SIGNAL_FEATURE_DATABASE_URL: /app/data/feature_engineering.db
+    ports:
+      - "${SIGNAL_INTELLIGENCE_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+    depends_on:
+      - feature_engineering
+
+  forecasting:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/forecasting/Dockerfile
+    environment:
+      SRCGCC_SQLITE_DIR: /app/data
+      FORECAST_FEATURE_DATABASE_URL: /app/data/feature_engineering.db
+    ports:
+      - "${FORECASTING_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+    depends_on:
+      - feature_engineering
+
+  anomaly_detection:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/anomaly_detection/Dockerfile
+    environment:
+      SRCGCC_SQLITE_DIR: /app/data
+      ANOMALY_FEATURE_DATABASE_URL: /app/data/feature_engineering.db
+    ports:
+      - "${ANOMALY_DETECTION_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+    depends_on:
+      - feature_engineering
+
+  causal_inference:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/causal_inference/Dockerfile
+    environment:
+      SRCGCC_SQLITE_DIR: /app/data
+      CAUSAL_GRAPH_DATABASE_URL: /app/data/knowledge_graph.db
+    ports:
+      - "${CAUSAL_INFERENCE_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+    depends_on:
+      - knowledge_graph
+
+  policy_service:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/policy_service/Dockerfile
+    environment:
+      SRCGCC_SQLITE_DIR: /app/data
+      POLICY_FEATURE_DATABASE_URL: /app/data/feature_engineering.db
+    ports:
+      - "${POLICY_SERVICE_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+    depends_on:
+      - feature_engineering
+
+  scenario_simulation:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/scenario_simulation/Dockerfile
+    ports:
+      - "${SCENARIO_SIMULATION_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+    depends_on:
+      - feature_engineering
+      - knowledge_graph
+      - policy_service
+
+  optimization:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/optimization/Dockerfile
+    ports:
+      - "${OPTIMIZATION_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+    depends_on:
+      - scenario_simulation
+
+  decisioning:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/decisioning/Dockerfile
+    ports:
+      - "${DECISIONING_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+    depends_on:
+      - optimization
+
+  decision_explanation:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/decision_explanation/Dockerfile
+    ports:
+      - "${DECISION_EXPLANATION_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+    depends_on:
+      - decisioning
+
+volumes:
+  app-data:
+  postgres-data:
+  mongo-data:
+  neo4j-data:
+  opensearch-data:
+  redis-data:
+  redpanda-data:
+  rabbitmq-data:
+  keycloak-db-data:
+  minio-data:
+  vault-data:
+  prometheus-data:
+  grafana-data:
+  loki-data:
+  mlflow-data:

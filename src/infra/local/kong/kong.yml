@@ -1,0 +1,17 @@
+_format_version: "3.0"
+services:
+  - name: source-connector
+    url: http://source_connector:8000
+    routes:
+      - name: source-connector-route
+        paths:
+          - /api
+        strip_path: false
+
+  - name: health
+    url: http://source_connector:8000
+    routes:
+      - name: health-route
+        paths:
+          - /health
+        strip_path: false

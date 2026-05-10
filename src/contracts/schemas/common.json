@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common.schema.json",
+  "title": "Common Models",
+  "type": "object",
+  "properties": {
+    "schema_version": { "type": "string" },
+    "tenant_id": { "type": "string" },
+    "correlation_id": { "type": "string" },
+    "artifact_id": { "type": "string" }
+  }
+}
+
