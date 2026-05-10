@@ -1,0 +1,12 @@
+@startuml
+actor Service
+participant "Specialized Agent" as Agent
+participant LLM
+
+Service -> Agent : invoke_agent(task_artifact)
+Agent -> Agent : validate_input()
+Agent -> LLM : call_llm(prompt, context)
+LLM --> Agent : structured_response
+Agent -> Agent : assemble_artifact()
+Agent --> Service : return_artifact(result)
+@enduml

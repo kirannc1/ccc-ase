@@ -487,6 +487,80 @@ services:
     depends_on:
       - decisioning
 
+  approval_workflow:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/approval_workflow/Dockerfile
+    ports:
+      - "${APPROVAL_WORKFLOW_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+
+  human_override:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/human_override/Dockerfile
+    ports:
+      - "${HUMAN_OVERRIDE_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+
+  action_adapters:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/action_adapters/Dockerfile
+    ports:
+      - "${ACTION_ADAPTERS_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+
+  execution_orchestrator:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/execution_orchestrator/Dockerfile
+    ports:
+      - "${EXECUTION_ORCHESTRATOR_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+    depends_on:
+      - action_adapters
+
+  audit_trail:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/audit_trail/Dockerfile
+    ports:
+      - "${AUDIT_TRAIL_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+
+  model_registry:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/model_registry/Dockerfile
+    ports:
+      - "${MODEL_REGISTRY_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+
+  learning_service:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/learning_service/Dockerfile
+    ports:
+      - "${LEARNING_SERVICE_PORT}:8000"
+    volumes:
+      - app-data:/app/data
+    depends_on:
+      - audit_trail
+
 volumes:
   app-data:
   postgres-data:
