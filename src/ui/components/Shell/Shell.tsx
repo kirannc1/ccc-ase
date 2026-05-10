@@ -31,7 +31,13 @@ export function Shell({ children }: { children: ReactNode }) {
     <div className={styles.root}>
       <header className={styles.header}>
         <div className={styles.brand}>
-          <Body1Strong>CCC ASE</Body1Strong>
+          <Body1Strong>
+            <img
+              src="/logo.png"
+              alt="CCC ASE Logo"
+              style={{ height: '3em', verticalAlign: 'middle' }}
+            />
+          </Body1Strong>
         </div>
         <TabList selectedValue={selectedValue}>
           {navItems.map((item) => (
