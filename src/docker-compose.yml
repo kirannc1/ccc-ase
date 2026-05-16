@@ -231,7 +231,7 @@ services:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
     ports:
-      - "${GRAFANA_PORT}:3000"
+      - "${GRAFANA_PORT}:3001"
     volumes:
       - grafana-data:/var/lib/grafana
       - ./infra/local/monitoring/grafana-datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml:ro

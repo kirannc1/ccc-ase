@@ -1,0 +1,29 @@
+# Virtual Environments
+venv/
+.venv/
+env/
+.env/
+
+# Python Cache and Compiled Bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Testing and Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# IDEs and OS junk
+.git/
+.vscode/
+.idea/
+.DS_Store
+
+# Data and Notebooks (If applicable)
+*.ipynb
+*.csv
+*.json
+*.sqlite3

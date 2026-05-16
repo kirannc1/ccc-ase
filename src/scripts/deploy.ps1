@@ -2,7 +2,36 @@ $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path $PSScriptRoot -Parent)
 
 if (-not (Test-Path .env)) { Copy-Item .env.template .env }
-docker compose --env-file .env up -d --build
+
+if (-not (Test-Path .dockerignore)) {
+@'
+.git
+.github
+.vscode
+**/__pycache__/
+**/*.pyc
+.tmp-test
+.tmp-support
+.dbcheck
+.sqlite
+*.db
+*.db-journal
+*.sqlite
+*.sqlite-journal
+ui/node_modules
+ui/.next
+ui/out
+ui/dist
+*.log
+'@ | Set-Content -Encoding UTF8 -NoNewline .dockerignore
+}
+
+$env:DOCKER_BUILDKIT = '1'
+$env:COMPOSE_DOCKER_CLI_BUILD = '1'
+
+$args = @('--env-file', '.env', 'up', '-d', '--build')
+if ($env:FORCE_REBUILD -eq '1') { $args += @('--no-cache') }
+docker compose @args
 
 $ports = @{
   source    = if ($env:SOURCE_CONNECTOR_PORT) { [int]$env:SOURCE_CONNECTOR_PORT } else { 8011 }
